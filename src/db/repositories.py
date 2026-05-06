@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.db.database import Base
-from src.models.models import User, UserRole, Log
+from src.models.models import User, UserRole, Log, Category
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -68,6 +68,36 @@ class UserRepository(BaseRepository[User]):
             update(User).where(User.id == user_id).values(**kwargs)
         )
         return await self.get_by_id(user_id)
+
+
+class CategoryRepository(BaseRepository[Category]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(Category, session)
+
+    async def get_all_with_products(self) -> Sequence[Category]:
+        result = await self.session.execute(
+            select(Category).options(selectinload(Category.products))
+        )
+        return result.scalars().all()
+
+    async def get_by_name(self, name: str) -> Optional[Category]:
+        result = await self.session.execute(
+            select(Category).where(Category.name == name)
+        )
+        return result.scalar_one_or_none()
+
+    async def create(self, name: str, description: Optional[str] = None) -> Category:
+        cat = Category(name=name, description=description)
+        self.session.add(cat)
+        await self.session.flush()
+        await self.session.refresh(cat)
+        return cat
+
+    async def update(self, category_id: int, **kwargs) -> Optional[Category]:
+        await self.session.execute(
+            update(Category).where(Category.id == category_id).values(**kwargs)
+        )
+        return await self.get_by_id(category_id)
 
 
 class LogRepository(BaseRepository[Log]):

@@ -37,3 +37,25 @@ class UserUpdate(BaseModel):
 
 class UserPasswordChange(BaseModel):
     new_password: str = Field(..., min_length=6)
+
+
+# Categories schemas
+class CategoryBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=128)
+    description: Optional[str] = None
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=128)
+    description: Optional[str] = None
+
+class CategoryRead(CategoryBase):
+    id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+class CategoryWithProducts(CategoryRead):
+    products: list["ProductRead"] = []
