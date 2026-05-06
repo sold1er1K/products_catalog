@@ -188,3 +188,12 @@ class LogRepository(BaseRepository[Log]):
         self.session.add(log)
         await self.session.flush()
         return log
+
+    async def get_recent(self, limit: int = 100) -> Sequence[Log]:
+        result = await self.session.execute(
+            select(Log)
+            .options(selectinload(Log.user))
+            .order_by(Log.created_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()

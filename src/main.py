@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from src.api.v1 import auth, users, categories, products, currency, pages
+from src.api.v1 import auth, users, categories, products, currency, logs, pages
 from src.core.config import settings
 from src.db.database import cleanup
 from src.db.seed import seed
@@ -34,6 +34,7 @@ app.include_router(users.router)
 app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(currency.router)
+app.include_router(logs.router)
 app.include_router(pages.router)
 
 @app.get("/health")
