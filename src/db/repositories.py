@@ -50,6 +50,25 @@ class UserRepository(BaseRepository[User]):
         )
         return result.scalar_one_or_none()
 
+    async def create(self, username: str, email: str, hashed_password: str, role: UserRole) -> User:
+        user = User(username=username, email=email, hashed_password=hashed_password, role=role)
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.refresh(user)
+        return user
+
+    async def update_password(self, user_id: int, hashed_password: str) -> bool:
+        result = await self.session.execute(
+            update(User).where(User.id == user_id).values(hashed_password=hashed_password)
+        )
+        return result.rowcount > 0
+
+    async def update(self, user_id: int, **kwargs) -> Optional[User]:
+        await self.session.execute(
+            update(User).where(User.id == user_id).values(**kwargs)
+        )
+        return await self.get_by_id(user_id)
+
 
 class LogRepository(BaseRepository[Log]):
     def __init__(self, session: AsyncSession):

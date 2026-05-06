@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.security import decode_token
 from src.db.database import get_db
 from src.db.repositories import UserRepository
-from src.models.models import User
+from src.models.models import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
@@ -50,3 +50,20 @@ async def get_current_user_optional(
         return await get_current_user(token=token, access_token=access_token, db=db)
     except HTTPException:
         return None
+
+
+def require_role(*roles: UserRole):
+    async def checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Недостаточно прав",
+            )
+        return current_user
+
+    return checker
+
+
+require_simple = require_role(UserRole.simple, UserRole.advanced, UserRole.admin)
+require_advanced = require_role(UserRole.advanced, UserRole.admin)
+require_admin = require_role(UserRole.admin)

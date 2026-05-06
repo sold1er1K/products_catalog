@@ -25,8 +25,16 @@ function setLoading(isLoading) {
 function validateForm() {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
-    if (!username) { showError('Введите имя пользователя'); usernameInput.focus(); return false; }
-    if (!password) { showError('Введите пароль'); passwordInput.focus(); return false; }
+    if (!username) { 
+        showError('Введите имя пользователя'); 
+        usernameInput.focus(); 
+        return false; 
+    }
+    if (!password) { 
+        showError('Введите пароль'); 
+        passwordInput.focus(); 
+        return false; 
+    }
     return true;
 }
 
@@ -65,20 +73,11 @@ async function handleLogin(username, password) {
     }
 }
 
-async function onSubmit(event) {
-    event.preventDefault();
-    hideError();
-    if (!validateForm()) return;
-    setLoading(true);
-    await handleLogin(usernameInput.value.trim(), passwordInput.value);
-}
-
 async function checkAlreadyLoggedIn() {
     try {
-        const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
-        if (response.ok && !isRedirecting) {
-            const user = await response.json();
-
+        const user = await GET('/api/auth/me');
+        
+        if (user && !isRedirecting) {
             localStorage.setItem('user', JSON.stringify({
                 username: user.username,
                 role: user.role
@@ -87,8 +86,16 @@ async function checkAlreadyLoggedIn() {
             window.location.replace('/');
         }
     } catch (error) {
-        // skip
+        console.log('Not logged in:', error.message);
     }
+}
+
+async function onSubmit(event) {
+    event.preventDefault();
+    hideError();
+    if (!validateForm()) return;
+    setLoading(true);
+    await handleLogin(usernameInput.value.trim(), passwordInput.value);
 }
 
 function addInputEffects() {
@@ -120,6 +127,7 @@ function addAnimationEffect() {
     }
 }
 
+
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAlreadyLoggedIn();
 
@@ -129,6 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     addAnimationEffect();
 
     loginForm?.addEventListener('submit', onSubmit);
+    
     [usernameInput, passwordInput].forEach(input => {
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !submitBtn.disabled) {
