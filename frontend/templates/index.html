@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Каталог продуктов</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div id="app" style="display:none">
+    <p>Главная страница</p>
+    <button onclick="logout()">Выйти</button>
+</div>
+
+<script>
+    (async function checkAuth() {
+        try {
+            const resp = await fetch('/api/auth/me', { credentials: 'same-origin' });
+            if (!resp.ok) {
+                window.location.replace('/login');
+                return;
+            }
+            const user = await resp.json();
+            localStorage.setItem('user', JSON.stringify({
+                username: user.username,
+                role: user.role
+            }));
+            document.getElementById('app').style.display = '';
+        } catch {
+            window.location.replace('/login');
+        }
+    })();
+
+    async function logout() {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        localStorage.removeItem('user');
+        window.location.replace('/login');
+    }
+</script>
+
+</body>
+</html>

@@ -1,23 +1,37 @@
-from fastapi import FastAPI
-from src.core.config import settings
+from contextlib import asynccontextmanager
 
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from src.api.v1 import auth, pages
+from src.core.config import settings
+from src.db.database import cleanup
+from src.db.seed import seed
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        await seed()
+    except Exception as e:
+        print(f"Failed to seed database: {e}")
+        raise
+
+    yield
+
+    await cleanup()
 
 app = FastAPI(
     title=settings.APP_NAME,
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
+
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
+
+
+app.include_router(auth.router)
+app.include_router(pages.router)
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "app": settings.APP_NAME}
-
-
-# launch without docker
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "src.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True
-    )
