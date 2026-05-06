@@ -59,3 +59,48 @@ class CategoryRead(CategoryBase):
 
 class CategoryWithProducts(CategoryRead):
     products: list["ProductRead"] = []
+
+
+# products schemas
+class ProductBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=256)
+    category_id: int
+    description: Optional[str] = None
+    price: float = Field(..., gt=0)
+    note_general: Optional[str] = None
+    note_special: Optional[str] = None
+
+class ProductCreate(ProductBase):
+    pass
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=256)
+    category_id: Optional[int] = None
+    description: Optional[str] = None
+    price: Optional[float] = Field(None, gt=0)
+    note_general: Optional[str] = None
+    note_special: Optional[str] = None
+
+class ProductRead(BaseModel):
+    id: int
+    name: str
+    category_id: int
+    category_name: Optional[str] = None
+    description: Optional[str] = None
+    price: float
+    note_general: Optional[str] = None
+    note_special: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# currencty schemas
+class CurrencyRate(BaseModel):
+    currency: str
+    rate: float
+    price_usd: float
+
+
+CategoryWithProducts.model_rebuild()

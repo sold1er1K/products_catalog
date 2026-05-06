@@ -1,11 +1,11 @@
 from typing import Optional, Sequence, Generic, Type, TypeVar
 
-from sqlalchemy import select, update, func, delete
+from sqlalchemy import select, update, func, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.db.database import Base
-from src.models.models import User, UserRole, Log, Category
+from src.models.models import User, UserRole, Log, Category, Product
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -98,6 +98,70 @@ class CategoryRepository(BaseRepository[Category]):
             update(Category).where(Category.id == category_id).values(**kwargs)
         )
         return await self.get_by_id(category_id)
+
+
+class ProductRepository(BaseRepository[Product]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(Product, session)
+
+    async def get_all_with_category(
+            self,
+            skip: int = 0,
+            limit: int = 100,
+            search: Optional[str] = None,
+            category_id: Optional[int] = None,
+    ) -> Sequence[Product]:
+        q = select(Product).options(selectinload(Product.category))
+        if search:
+            q = q.where(
+                or_(
+                    Product.name.ilike(f"%{search}%"),
+                    Product.description.ilike(f"%{search}%"),
+                )
+            )
+        if category_id:
+            q = q.where(Product.category_id == category_id)
+        q = q.offset(skip).limit(limit).order_by(Product.id)
+        result = await self.session.execute(q)
+        return result.scalars().all()
+
+    async def get_with_category(self, product_id: int) -> Optional[Product]:
+        result = await self.session.execute(
+            select(Product)
+            .options(selectinload(Product.category))
+            .where(Product.id == product_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def create(self, **kwargs) -> Product:
+        product = Product(**kwargs)
+        self.session.add(product)
+        await self.session.flush()
+        return await self.get_with_category(product.id)
+
+    async def update(self, product_id: int, **kwargs) -> Optional[Product]:
+        await self.session.execute(
+            update(Product).where(Product.id == product_id).values(**kwargs)
+        )
+        return await self.get_with_category(product_id)
+
+    async def count(
+            self,
+            search: Optional[str] = None,
+            category_id: Optional[int] = None,
+    ) -> int:
+        q = select(func.count(Product.id))
+        if search:
+            q = q.where(
+                or_(
+                    Product.name.ilike(f"%{search}%"),
+                    Product.description.ilike(f"%{search}%"),
+                )
+            )
+        if category_id:
+            q = q.where(Product.category_id == category_id)
+        result = await self.session.execute(q)
+        return result.scalar_one()
 
 
 class LogRepository(BaseRepository[Log]):
