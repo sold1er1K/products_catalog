@@ -5,39 +5,275 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Каталог продуктов</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
 
-<div id="app" style="display:none">
-    <p>Главная страница</p>
-    <button onclick="logout()">Выйти</button>
+<header class="header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <span class="logo-icon">🛒</span>
+            <span class="brand-name">Каталог продуктов</span>
+        </div>
+        <nav class="header-nav">
+            <button class="nav-btn active" data-view="catalog">Каталог</button>
+            <button class="nav-btn" data-view="categories" id="navCategories">Категории</button>
+            <button class="nav-btn hidden" data-view="users" id="navUsers">Пользователи</button>
+            <button class="nav-btn hidden" data-view="logs" id="navLogs">Журнал</button>
+        </nav>
+        <div class="header-user">
+            <span id="userBadge" class="user-badge"></span>
+            <button class="btn btn-outline btn-sm" id="logoutBtn">Выйти</button>
+        </div>
+    </div>
+</header>
+
+<main class="main-container">
+    <div id="viewCatalog" class="view active">
+        <div class="view-header">
+            <h2>Каталог товаров</h2>
+            <button class="btn btn-primary" id="addProductBtn">+ Добавить товар</button>
+        </div>
+
+        <div class="filters-bar">
+            <div class="search-wrap">
+                <input type="text" id="searchInput" class="input-search" placeholder="🔍 Поиск по названию или описанию…">
+            </div>
+            <select id="categoryFilter" class="select-filter">
+                <option value="">Все категории</option>
+            </select>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="data-table" id="productsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Наименование</th>
+                        <th>Категория</th>
+                        <th>Описание</th>
+                        <th>Стоимость (руб.)</th>
+                        <th>Примечание общее</th>
+                        <th id="thSpecial" class="hidden">Примечание специальное</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="productsBody">
+                    <tr><td colspan="8" class="loading-cell">Загрузка…</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- categories -->
+    <div id="viewCategories" class="view">
+        <div class="view-header">
+            <h2>Категории</h2>
+            <button class="btn btn-primary hidden" id="addCategoryBtn">+ Добавить категорию</button>
+        </div>
+        <div class="categories-grid" id="categoriesGrid">
+            <div class="loading-cell">Загрузка…</div>
+        </div>
+    </div>
+
+    <!-- users -->
+    <div id="viewUsers" class="view">
+        <div class="view-header">
+            <h2>Управление пользователями</h2>
+            <button class="btn btn-primary" id="addUserBtn">+ Добавить пользователя</button>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Логин</th>
+                        <th>Email</th>
+                        <th>Роль</th>
+                        <th>Статус</th>
+                        <th>Создан</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ─logs -->
+    <div id="viewLogs" class="view">
+        <div class="view-header">
+            <h2>Журнал действий</h2>
+            <button class="btn btn-outline btn-sm" id="refreshLogsBtn">↻ Обновить</button>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        <th>Пользователь</th>
+                        <th>Действие</th>
+                        <th>Сущность</th>
+                        <th>ID</th>
+                        <th>Детали</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<!-- modals-->
+
+<div id="currencyModal" class="modal-overlay hidden">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Курс USD · НБРБ</h3>
+            <button class="modal-close" data-close="currencyModal">✕</button>
+        </div>
+        <div class="modal-body" id="currencyModalBody">
+            <div class="loading-cell">Загрузка…</div>
+        </div>
+    </div>
 </div>
 
-<script>
-    (async function checkAuth() {
-        try {
-            const resp = await fetch('/api/auth/me', { credentials: 'same-origin' });
-            if (!resp.ok) {
-                window.location.replace('/login');
-                return;
-            }
-            const user = await resp.json();
-            localStorage.setItem('user', JSON.stringify({
-                username: user.username,
-                role: user.role
-            }));
-            document.getElementById('app').style.display = '';
-        } catch {
-            window.location.replace('/login');
-        }
-    })();
+<div id="productModal" class="modal-overlay hidden">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 id="productModalTitle">Товар</h3>
+            <button class="modal-close" data-close="productModal">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Наименование *</label>
+                        <input type="text" id="pName" required class="input">
+                    </div>
+                    <div class="form-group">
+                        <label>Категория *</label>
+                        <select id="pCategory" required class="select"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="pDescription" class="textarea" rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Стоимость (руб.) *</label>
+                        <input type="number" id="pPrice" required min="0.01" step="0.01" class="input">
+                    </div>
+                    <div class="form-group">
+                        <label>Примечание общее</label>
+                        <input type="text" id="pNoteGeneral" class="input">
+                    </div>
+                </div>
+                <div class="form-group" id="noteSpecialGroup" class="hidden">
+                    <label>Примечание специальное</label>
+                    <input type="text" id="pNoteSpecial" class="input">
+                </div>
+                <div id="productFormError" class="alert alert-error hidden"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" data-close="productModal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="productSaveBtn">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-    async function logout() {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-        localStorage.removeItem('user');
-        window.location.replace('/login');
-    }
-</script>
+<div id="categoryModal" class="modal-overlay hidden">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="categoryModalTitle">Категория</h3>
+            <button class="modal-close" data-close="categoryModal">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="categoryForm">
+                <input type="hidden" id="categoryId">
+                <div class="form-group">
+                    <label>Название *</label>
+                    <input type="text" id="catName" required class="input">
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="catDescription" class="textarea" rows="2"></textarea>
+                </div>
+                <div id="categoryFormError" class="alert alert-error hidden"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" data-close="categoryModal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
+<div id="userModal" class="modal-overlay hidden">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="userModalTitle">Пользователь</h3>
+            <button class="modal-close" data-close="userModal">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="userForm">
+                <input type="hidden" id="userId">
+                <div class="form-group" id="usernameGroup">
+                    <label>Логин *</label>
+                    <input type="text" id="uUsername" class="input">
+                </div>
+                <div class="form-group" id="emailGroup">
+                    <label>Email *</label>
+                    <input type="email" id="uEmail" class="input">
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label>Пароль *</label>
+                    <input type="password" id="uPassword" class="input">
+                </div>
+                <div class="form-group">
+                    <label>Роль</label>
+                    <select id="uRole" class="select">
+                        <option value="simple">Простой пользователь</option>
+                        <option value="advanced">Продвинутый пользователь</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                </div>
+                <div class="form-group" id="activeGroup">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="uActive" checked> Активен
+                    </label>
+                </div>
+                <div id="userFormError" class="alert alert-error hidden"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" data-close="userModal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="confirmModal" class="modal-overlay hidden">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Подтверждение</h3>
+        </div>
+        <div class="modal-body">
+            <p id="confirmText"></p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="confirmCancel">Отмена</button>
+                <button class="btn btn-danger" id="confirmOk">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/app.js"></script>
 </body>
 </html>
